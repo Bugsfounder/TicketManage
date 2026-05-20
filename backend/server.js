@@ -109,12 +109,20 @@ io.on('connection', (socket) => {
         // Save the updated ticket info
         const ticketIdx = tickets.findIndex(t => t.id === ticketId);
         if (ticketIdx !== -1) {
-          tickets[ticketIdx] = {
+          const updatedTicket = {
             ...tickets[ticketIdx],
             ...updatedData,
             updatedAt: new Date().toISOString()
           };
-          console.log(`Ticket updated: ${ticketId} by ${existingLock.agentName}`);
+          
+          if (updatedTicket.status === 'Resolved') {
+            // Remove from active tickets list entirely
+            tickets.splice(ticketIdx, 1);
+            console.log(`Ticket resolved and removed: ${ticketId}`);
+          } else {
+            tickets[ticketIdx] = updatedTicket;
+            console.log(`Ticket updated: ${ticketId} by ${existingLock.agentName}`);
+          }
           // Broadcast full updated tickets list to ensure everyone is synced
           io.emit('tickets_updated', tickets);
         }
@@ -136,6 +144,11 @@ io.on('connection', (socket) => {
       customer: ticketData.customer || "Unknown Customer",
       updatedAt: new Date().toISOString()
     };
+
+    if (newTicket.status === 'Resolved') {
+      console.log(`Ticket created as Resolved, not adding: ${newTicket.id}`);
+      return;
+    }
 
     tickets.push(newTicket);
     console.log(`Ticket created: ${newTicket.id} - ${newTicket.title}`);
